@@ -12,6 +12,7 @@ AWS.config.update({
     accessKeyId: 'Abc', // Must be not null
     secretAccessKey: 'Abc', // Must be not null
   }),
+  credentials: new AWS.SharedIniFileCredentials({ profile: 'covid' }),
 });
 const db = new AWS.DynamoDB();
 const dynamoClient = new AWS.DynamoDB.DocumentClient();
@@ -32,25 +33,35 @@ const keypress = async () => {
   }));
 };
 
+// Recursively scan DynamoDB paginated results
+const exportData = async (table, nextKey = false) => {
+  const params = {
+    TableName: table,
+    ...(nextKey && { ExclusiveStartKey: nextKey }),
+  };
+  const request = await dynamoClient.scan(params).promise();
+  const items = request.Items;
+  if (request.LastEvaluatedKey) items.push(...(await exportData(table, request.LastEvaluatedKey)));
+  return items;
+};
+
 async function migrateUsers() {
   const usersCollection = dbClient.db.collection(collections.USERS);
 
   // This could be improved by using a paginated scan but
   // considering we have less than 2MB of data, this should be okay
   console.log('Loading DynamoDB users into memory...');
-  const dynamoUsers = await dynamoClient.scan({
-    TableName: usersTable,
-  }).promise();
+  const dynamoUsers = await exportData(usersTable);
 
   console.log('\nMigrating users...');
-  const totalUsers = dynamoUsers.Count;
+  const totalUsers = dynamoUsers.length;
   let processedUsers = 0;
   let addedUsers = 0;
   let redundantUsers = 0;
   let failedUsers = 0;
 
-  if (dynamoUsers.Items) {
-    for (const item of dynamoUsers.Items) {
+  if (dynamoUsers) {
+    for (const item of dynamoUsers) {
       try {
         // Check if user exists in MongoDB
         await usersCollection.insertOne(
@@ -87,19 +98,13 @@ async function migrateForms() {
   // This could be improved by using a paginated scan but
   // considering we have less than 2MB of data, this should be okay
   console.log('Loading DynamoDB forms into memory...');
-  const dynamoForms = await dynamoClient.scan({
-    TableName: formsTable,
-  }).promise();
+  const dynamoForms = await exportData(formsTable);
 
   console.log('Loading DynamoDB serviceBC items into memory...');
-  const dynamoServiceQuery = await dynamoClient.scan({
-    TableName: serviceBCTable,
-  }).promise();
-
-  const dynamoServiceBCItems = dynamoServiceQuery.Items || [];
+  const dynamoServiceBCItems = await exportData(serviceBCTable);
 
   console.log('\nMigrating forms...');
-  const total = dynamoForms.Count;
+  const total = dynamoForms.length;
   let processed = 0;
   let added = 0;
   let redundant = 0;
@@ -107,8 +112,8 @@ async function migrateForms() {
 
   const currentDate = new Date().toISOString();
 
-  if (dynamoForms.Items) {
-    for (const item of dynamoForms.Items) {
+  if (dynamoForms) {
+    for (const item of dynamoForms) {
       try {
         const { created_at, updated_at, ...formData } = item;
 
@@ -169,7 +174,10 @@ async function migrateForms() {
     dbClient.printConfig();
 
     console.log('\nCurrent dynamoDB config are: ');
-    console.log({ endpoint: AWS.config.endpoint }, '\n');
+    console.log(`Endpoint: ${AWS.config.endpoint}`);
+    console.log(`User table: ${usersTable}`);
+    console.log(`Form table: ${formsTable}`);
+    console.log(`SBC table: ${serviceBCTable}`);
 
     console.log('\n\nDouble check configuration.\nPress any key to continue or CTRL + C to abort.');
     await keypress();

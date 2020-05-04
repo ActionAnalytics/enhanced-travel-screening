@@ -32,6 +32,11 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       - DB_SERVER=${DB_SERVER}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_AWS_TLS_ENABLED=${DB_AWS_TLS_ENABLED}
     expose:
       - "80"
     ports:
