@@ -12,7 +12,7 @@ AWS.config.update({
     accessKeyId: 'Abc', // Must be not null
     secretAccessKey: 'Abc', // Must be not null
   }),
-  credentials: new AWS.SharedIniFileCredentials({ profile: 'covid' }),
+  // credentials: new AWS.SharedIniFileCredentials({ profile: 'covid' }),
 });
 const db = new AWS.DynamoDB();
 const dynamoClient = new AWS.DynamoDB.DocumentClient();

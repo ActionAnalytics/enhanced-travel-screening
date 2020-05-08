@@ -5,6 +5,9 @@
     "jest/globals": true
   },
   "rules": {
-    "no-underscore-dangle": ["error", { "allowAfterThis": true }]
+    "no-underscore-dangle": [
+      "error",
+      { "allowAfterThis": true, "allow": ["_id"] } 
+    ]
   }
 }

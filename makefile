@@ -63,6 +63,10 @@ run-local-db: ## -- Target : Runs the local development containers.
 	@echo "+\n++ Make: Running db locally ...\n+"
 	@docker-compose -f docker-compose.dev.yml up mongodb
 
+run-local-server: ## -- Target : Runs the local development containers.
+	@echo "+\n++ Make: Running server locally ...\n+"
+	@docker-compose -f docker-compose.dev.yml up server
+
 close-local: ## -- Target : Closes the local development containers.
 	@echo "+\n++ Make: Closing local container ...\n+"
 	@docker-compose -f docker-compose.dev.yml down
